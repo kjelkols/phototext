@@ -1,15 +1,18 @@
 # PhotoText - Structured Photo Storytelling Document Library
 
-**A minimal, type-safe document model for photo storytelling.**
+**TypeScript/JavaScript library for photo-rich documents in Imalink**
 
-PhotoText provides a structured document format optimized for creating photo-rich stories, albums, and narratives. Unlike Markdown or HTML, PhotoText uses a JSON-based internal representation that's easy to validate, manipulate programmatically, and render to multiple output formats.
+PhotoText provides a structured document format optimized for creating photo-rich stories, albums, and narratives. All processing happens in the frontend - backend simply stores and serves JSON.
+
+> **Important:** This is a frontend-only library. Backend needs no PhotoText code - just store and return JSON!
 
 ## 🎯 Philosophy
 
-- **Minimal but complete** - Only heading, paragraphs, lists, and image references
-- **Type-safe** - Python dataclasses with validation
-- **Format-independent** - Internal model renders to HTML, Markdown, or Qt widgets
-- **Photo-centric** - Designed around image references (hothashes), not URLs
+- **Frontend-first** - All document processing in browser, backend is just storage
+- **Minimal but complete** - Only headings, paragraphs, lists, and image references
+- **Type-safe** - Full TypeScript support with validation
+- **Format-independent** - Renders to HTML or Markdown
+- **Photo-centric** - Designed around Imalink image IDs, not external URLs
 - **Diff-friendly** - JSON storage works great with Git
 
 ## ✨ Features
@@ -17,10 +20,11 @@ PhotoText provides a structured document format optimized for creating photo-ric
 - 📝 **Simple structure**: Headings (H1-H6), paragraphs, lists, images
 - 🎨 **Inline formatting**: Bold, italic, bold+italic
 - 🖼️ **Image references**: Reference images by hash (hothash), not file paths
-- 💾 **JSON storage**: Human-readable, versioned, cross-platform
-- 🔄 **Multiple outputs**: Render to HTML (with CSS), Markdown, or Qt widgets
-- 🔍 **Type-safe API**: Python dataclasses with full type hints
+- 💾 **JSON storage**: Human-readable, versioned, backend-agnostic
+- 🔄 **Multiple outputs**: Render to HTML (with CSS) or Markdown
+- 🔍 **Type-safe API**: Full TypeScript support
 - ✅ **Validated**: Only valid document structures can be created
+- 🎛️ **WYSIWYG Editor**: Built-in browser-based editor
 
 ## 🚫 What PhotoText is NOT
 
@@ -35,29 +39,24 @@ PhotoText is **specifically designed** for photo storytelling and albums.
 ## 📦 Installation
 
 ```bash
-pip install phototext
-```
-
-Or for development:
-
-```bash
-git clone https://github.com/yourusername/phototext.git
-cd phototext
-pip install -e .
+npm install @imalink/phototext
+# or
+pnpm add @imalink/phototext
 ```
 
 ## 🚀 Quick Start
 
 ### Create a document programmatically
 
-```python
-from phototext import (
+```typescript
+import {
     PhotoDocument,
     HeadingBlock,
     ParagraphBlock,
     ImageBlock,
     InlineSpan,
     InlineType
+} from '@imalink/phototext';
 )
 
 # Create document
@@ -68,75 +67,171 @@ doc = PhotoDocument(
 
 # Add heading
 doc.blocks.append(
-    HeadingBlock(1, [InlineSpan("Rome")])
-)
+} from '@imalink/phototext';
 
-# Add paragraph with formatting
-doc.blocks.append(
-    ParagraphBlock([
-        InlineSpan("We visited the "),
-        InlineSpan("Colosseum", InlineType.BOLD),
-        InlineSpan("!")
+// Create document
+const doc = new PhotoDocument(
+    'Summer Vacation 2024',
+    'Our trip to Italy'
+);
+
+// Add heading
+doc.addBlock(
+    new HeadingBlock(1, [new InlineSpan('Rome')])
+);
+
+// Add paragraph with formatting
+doc.addBlock(
+    new ParagraphBlock([
+        new InlineSpan('We visited the '),
+        new InlineSpan('Colosseum', InlineType.BOLD),
+        new InlineSpan('!')
     ])
-)
+);
 
-# Add image reference
-doc.blocks.append(
-    ImageBlock("abc123def456...", "Colosseum at sunset")
-)
+// Add image reference (Imalink image ID)
+doc.addBlock(
+    new ImageBlock('abc123def456...', 'Colosseum at sunset')
+);
 
-# Save to JSON
-doc.save("vacation.phototext")
+// Save to JSON
+const json = doc.toString();
 ```
 
 ### Load and render
 
-```python
-# Load from file
-doc = PhotoDocument.load("vacation.phototext")
+```typescript
+// Load from JSON
+const doc = PhotoDocument.fromString(jsonString);
 
-# Render to HTML
-html = doc.to_html(include_css=True)
-with open("vacation.html", "w") as f:
-    f.write(html)
+// Render to HTML
+const html = doc.toHTML({
+    includeCSS: true,
+    imageUrlResolver: (imageId) => `/api/images/${imageId}`
+});
 
-# Render to Markdown
-markdown = doc.to_markdown()
-with open("vacation.md", "w") as f:
-    f.write(markdown)
+// Insert into page
+document.getElementById('content')!.innerHTML = html;
+
+// Or render to Markdown
+const markdown = doc.toMarkdown();
 ```
+
+### Use the WYSIWYG Editor
+
+```typescript
+import { PhotoTextEditor } from '@imalink/phototext/editor';
+
+const editor = new PhotoTextEditor({
+    container: document.getElementById('editor-container')!,
+    document: doc,
+    imageUrlResolver: (imageId) => `/api/images/${imageId}/thumbnail`,
+    onChange: (document) => {
+        // Auto-save to backend
+        saveDocument(document.toString());
+    },
+    onImagePick: async () => {
+        // Open your image picker
+        return await showImagePicker();
+    }
+});
+
+// Add editor CSS
+const style = document.createElement('style');
+style.textContent = PhotoTextEditor.getDefaultCSS();
+document.head.appendChild(style);
+```
+
+## 🗄️ Backend Storage (Simple!)
+
+Backend only needs to store and serve JSON - no processing required:
+
+```typescript
+// Express.js example
+app.post('/api/documents', async (req, res) => {
+    const { title, description, content } = req.body;
+    
+    // Optional: Basic validation
+    if (!content.version || !Array.isArray(content.blocks)) {
+        return res.status(400).json({ error: 'Invalid format' });
+    }
+    
+    // Store as JSON(B)
+    await db.query(`
+        INSERT INTO documents (title, description, content, user_id)
+        VALUES ($1, $2, $3, $4)
+    `, [title, description, JSON.stringify(content), userId]);
+    
+    res.json({ success: true });
+});
+
+app.get('/api/documents/:id', async (req, res) => {
+    const result = await db.query(`
+        SELECT * FROM documents WHERE id = $1
+    `, [req.params.id]);
+    
+    // Just return the JSON - frontend handles everything else
+    res.json(result.rows[0]);
+});
+```
+
+### Database Schema
+
+```sql
+CREATE TABLE documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    content JSONB NOT NULL,  -- Store PhotoDocument JSON
+    created_at TIMESTAMP DEFAULT NOW(),
+    modified_at TIMESTAMP DEFAULT NOW(),
+    user_id UUID REFERENCES users(id)
+);
+
+-- Optional: Index for searching
+CREATE INDEX idx_documents_content ON documents USING gin(content);
+```
+
+## 📋 Document Structure
 
 ### Query document
 
-```python
-# Metadata
-print(f"Title: {doc.title}")
-print(f"Words: {doc.count_words()}")
-print(f"Images: {doc.count_images()}")
+```typescript
+// Metadata
+console.log(`Title: ${doc.title}`);
+console.log(`Blocks: ${doc.blocks.length}`);
 
-# Get all image references
-hothashes = doc.get_referenced_hothashes()
-print(f"Referenced images: {hothashes}")
+// Get all image references
+const imageIds = doc.getImageIds();
+console.log(`Referenced images: ${imageIds}`);
+
+// Validate images exist
+const validIds = new Set(['img1', 'img2']);
+const missingIds = doc.validateImageIds(validIds);
+if (missingIds.length > 0) {
+    console.warn('Missing images:', missingIds);
+}
 ```
 
 ## 📐 Document Structure
 
 ```
 PhotoDocument
-├── title: str
-├── description: str
-├── created: datetime
-├── modified: datetime
-└── blocks: List[BlockElement]
+├── title: string
+├── description: string
+├── created: Date
+├── modified: Date
+└── blocks: Block[]
     ├── HeadingBlock (H1-H6)
-    │   └── content: List[InlineSpan]
+    │   └── content: InlineSpan[]
     ├── ParagraphBlock
-    │   └── content: List[InlineSpan]
+    │   └── content: InlineSpan[]
     ├── ListBlock
-    │   └── items: List[List[InlineSpan]]
+    │   └── items: InlineSpan[][]
     └── ImageBlock
-        ├── hothash: str (image reference)
-        └── alt_text: str
+        ├── imageId: string (hothash reference)
+        ├── caption: string
+        └── alt: string
 ```
 
 ### Block Elements
@@ -144,7 +239,7 @@ PhotoDocument
 - **HeadingBlock** - Headings (H1 through H6)
 - **ParagraphBlock** - Text paragraphs with inline formatting
 - **ListBlock** - Unordered (bullet) lists
-- **ImageBlock** - Image references via hothash
+- **ImageBlock** - Image references via Imalink image ID (hothash)
 
 ### Inline Elements
 
@@ -195,10 +290,13 @@ PhotoText documents are stored as JSON with `.phototext` extension:
 ### HTML Output
 
 ```html
-<div class="photo-document">
+<div class="phototext-document">
   <h1>Rome</h1>
-  <img src="hothash://abc123def456..." alt="Colosseum" />
   <p>We visited the <strong>Colosseum</strong>!</p>
+  <figure>
+    <img src="/api/images/abc123def456..." alt="Colosseum at sunset">
+    <figcaption>Colosseum at sunset</figcaption>
+  </figure>
 </div>
 ```
 
@@ -207,12 +305,12 @@ PhotoText documents are stored as JSON with `.phototext` extension:
 ```markdown
 # Rome
 
-![Colosseum](hothash:abc123def456...)
-
 We visited the **Colosseum**!
+
+![Colosseum at sunset](imalink:abc123def456...)
 ```
 
-## 🖼️ Image References (Hothashes)
+## 🖼️ Image References (Imalink IDs)
 
 PhotoText uses **hothashes** instead of file paths or URLs. A hothash is a unique identifier for an image.
 
@@ -223,15 +321,14 @@ PhotoText uses **hothashes** instead of file paths or URLs. A hothash is a uniqu
 - ✅ Same image can be referenced multiple times without duplication
 
 **Custom image loading:**
-When rendering, you provide a function to resolve hothashes to actual images:
+When rendering, you provide a function to resolve image IDs to actual URLs:
 
-```python
-def load_image(hothash: str) -> bytes:
-    # Your custom logic here
-    return api.get_image(hothash)
+```typescript
+// Resolve Imalink image IDs to URLs
+const imageUrlResolver = (imageId: string) => `/api/images/${imageId}`;
 
-# In Qt viewer
-viewer = PhotoDocumentViewer(doc, image_loader=load_image)
+// Render with custom resolver
+const html = doc.toHTML({ imageUrlResolver });
 ```
 
 ## 🔧 API Reference
@@ -241,19 +338,25 @@ See [API.md](API.md) for complete API documentation.
 ## 🧪 Testing
 
 ```bash
-# Run tests
-pytest
-
-# With coverage
-pytest --cov=phototext
+# Run tests (JavaScript)
+cd js && npm test
 ```
 
 ## 📖 Examples
 
-See `examples/` directory for:
-- `basic_usage.py` - Simple document creation
-- `html_export.py` - Rendering to HTML
-- `qt_viewer.py` - Qt-based document viewer (requires PySide6)
+Se `js/examples/` directory for:
+- `basic-usage.html` - Simple document creation in browser
+- `editor-demo.html` - Interactive WYSIWYG editor demo
+- Full integration guide in `IMALINK_INTEGRATION.md`
+
+## 🎯 Imalink Integration
+
+PhotoText is designed specifically for use with Imalink. See [IMALINK_INTEGRATION.md](IMALINK_INTEGRATION.md) for:
+- Complete integration guide
+- Database schema
+- API endpoints
+- Vue.js component examples
+- Security best practices
 
 ## 🤝 Contributing
 
@@ -265,19 +368,19 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## 🛣️ Roadmap
 
-- [ ] Qt viewer widget
-- [ ] Qt editor widget with toolbar
-- [ ] Drag-drop image insertion
+- [x] TypeScript/JavaScript implementation
+- [x] WYSIWYG editor
+- [x] Imalink integration guide
+- [ ] React/Angular editor components
+- [ ] Advanced formatting options (within minimal philosophy)
+- [ ] Drag-drop image insertion in editor
 - [ ] Export to PDF
-- [ ] Export to EPUB
 - [ ] Ordered lists support
 - [ ] Nested lists support
-- [ ] Image captions
-- [ ] Custom CSS themes
 
 ## 🙏 Acknowledgments
 
-Built for the [ImaLink](https://github.com/yourusername/imalink) photo management system.
+Built for the Imalink photo management system.
 
 ---
 

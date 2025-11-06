@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoText - Grunnleggende Bruk</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            font-size: 1.2em;
+            margin-top: 0;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #output {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>PhotoText - Grunnleggende Bruk</h1>
+    <p>Dette eksemplet viser hvordan du bruker PhotoText-biblioteket for å opprette og vise dokumenter.</p>
+
+    <div>
+        <button onclick="createSimpleDocument()">Opprett Enkelt Dokument</button>
+        <button onclick="createRichDocument()">Opprett Rikt Dokument</button>
+        <button onclick="loadFromJSON()">Last fra JSON</button>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>JSON Output</h2>
+            <pre id="json-output"></pre>
+        </div>
+        <div class="panel">
+            <h2>HTML Preview</h2>
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // I en ekte implementasjon ville dette være:
+        // import { PhotoDocument, HeadingBlock, ParagraphBlock, ... } from '@imalink/phototext';
+        
+        // For demonstrasjon, antar vi at biblioteket er lastet
+        // Her er en forenklet versjon for demonstrasjon:
+
+        class InlineType {
+            static TEXT = "text";
+            static BOLD = "bold";
+            static ITALIC = "italic";
+            static BOLD_ITALIC = "bold_italic";
+        }
+
+        class InlineSpan {
+            constructor(text, style = InlineType.TEXT) {
+                this.text = text;
+                this.style = style;
+            }
+
+            toJSON() {
+                return { text: this.text, style: this.style };
+            }
+
+            toHTML() {
+                const text = this.text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                
+                switch(this.style) {
+                    case InlineType.BOLD: return `<strong>${text}</strong>`;
+                    case InlineType.ITALIC: return `<em>${text}</em>`;
+                    case InlineType.BOLD_ITALIC: return `<strong><em>${text}</em></strong>`;
+                    default: return text;
+                }
+            }
+        }
+
+        class HeadingBlock {
+            constructor(level, content = []) {
+                this.level = level;
+                this.content = content;
+            }
+
+            toJSON() {
+                return {
+                    type: "heading",
+                    level: this.level,
+                    content: this.content.map(s => s.toJSON())
+                };
+            }
+
+            toHTML() {
+                const html = this.content.map(s => s.toHTML()).join('');
+                return `<h${this.level}>${html}</h${this.level}>`;
+            }
+        }
+
+        class ParagraphBlock {
+            constructor(content = []) {
+                this.content = content;
+            }
+
+            toJSON() {
+                return {
+                    type: "paragraph",
+                    content: this.content.map(s => s.toJSON())
+                };
+            }
+
+            toHTML() {
+                const html = this.content.map(s => s.toHTML()).join('');
+                return `<p>${html}</p>`;
+            }
+        }
+
+        class ImageBlock {
+            constructor(imageId, caption, alt) {
+                this.imageId = imageId;
+                this.caption = caption;
+                this.alt = alt;
+            }
+
+            toJSON() {
+                return {
+                    type: "image",
+                    imageId: this.imageId,
+                    caption: this.caption,
+                    alt: this.alt
+                };
+            }
+
+            toHTML(imageUrlResolver) {
+                const url = imageUrlResolver ? imageUrlResolver(this.imageId) : `#${this.imageId}`;
+                const alt = this.alt || this.caption || '';
+                const img = `<img src="${url}" alt="${alt}" style="max-width: 100%; height: auto;">`;
+                
+                if (this.caption) {
+                    return `<figure>\n  ${img}\n  <figcaption style="text-align: center; font-style: italic; color: #666; margin-top: 0.5em;">${this.caption}</figcaption>\n</figure>`;
+                }
+                return img;
+            }
+        }
+
+        class PhotoDocument {
+            constructor(title, description = '', metadata = {}) {
+                this.version = "1.0";
+                this.title = title;
+                this.description = description;
+                this.created = new Date();
+                this.modified = new Date();
+                this.metadata = metadata;
+                this.blocks = [];
+            }
+
+            addBlock(block) {
+                this.blocks.push(block);
+                this.modified = new Date();
+            }
+
+            toJSON() {
+                return {
+                    version: this.version,
+                    title: this.title,
+                    description: this.description,
+                    created: this.created.toISOString(),
+                    modified: this.modified.toISOString(),
+                    metadata: this.metadata,
+                    blocks: this.blocks.map(b => b.toJSON())
+                };
+            }
+
+            toHTML(imageUrlResolver) {
+                return this.blocks.map(b => b.toHTML(imageUrlResolver)).join('\n');
+            }
+
+            toString() {
+                return JSON.stringify(this.toJSON(), null, 2);
+            }
+        }
+
+        // Mock image URL resolver (for demo)
+        function mockImageUrlResolver(imageId) {
+            return `https://via.placeholder.com/600x400?text=Image+${imageId.substring(0, 8)}`;
+        }
+
+        window.createSimpleDocument = function() {
+            const doc = new PhotoDocument('Mitt Første Dokument', 'En enkel beskrivelse');
+            
+            doc.addBlock(new HeadingBlock(1, [new InlineSpan('Velkommen')]));
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Dette er et enkelt PhotoText-dokument.')
+            ]));
+
+            displayDocument(doc);
+        };
+
+        window.createRichDocument = function() {
+            const doc = new PhotoDocument('Sommerferien 2024', 'Vår reise til Italia');
+            
+            // Overskrift
+            doc.addBlock(new HeadingBlock(1, [new InlineSpan('Reise til Roma')]));
+            
+            // Avsnitt med formatering
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Vi besøkte den '),
+                new InlineSpan('vakre', InlineType.ITALIC),
+                new InlineSpan(' byen Roma i '),
+                new InlineSpan('august 2024', InlineType.BOLD),
+                new InlineSpan('.')
+            ]));
+
+            // Bilde
+            doc.addBlock(new ImageBlock(
+                'abc123def456',
+                'Colosseum ved solnedgang',
+                'Foto av Colosseum'
+            ));
+
+            // Ny seksjon
+            doc.addBlock(new HeadingBlock(2, [new InlineSpan('Høydepunkter')]));
+            
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('De beste opplevelsene var:')
+            ]));
+
+            // Avsnitt med rik formatering
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Besøk til '),
+                new InlineSpan('Vatikanet', InlineType.BOLD_ITALIC),
+                new InlineSpan(' var '),
+                new InlineSpan('uforglemmelig', InlineType.BOLD),
+                new InlineSpan('!')
+            ]));
+
+            displayDocument(doc);
+        };
+
+        window.loadFromJSON = function() {
+            const sampleJSON = {
+                "version": "1.0",
+                "title": "Eksempel fra JSON",
+                "description": "Lastet fra JSON-data",
+                "created": new Date().toISOString(),
+                "modified": new Date().toISOString(),
+                "metadata": {},
+                "blocks": [
+                    {
+                        "type": "heading",
+                        "level": 1,
+                        "content": [{ "text": "Lastet Dokument", "style": "text" }]
+                    },
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            { "text": "Dette dokumentet ble lastet fra ", "style": "text" },
+                            { "text": "JSON-data", "style": "bold" },
+                            { "text": ".", "style": "text" }
+                        ]
+                    }
+                ]
+            };
+
+            document.getElementById('json-output').textContent = JSON.stringify(sampleJSON, null, 2);
+            document.getElementById('output').innerHTML = '<h1>Lastet Dokument</h1><p>Dette dokumentet ble lastet fra <strong>JSON-data</strong>.</p>';
+        };
+
+        function displayDocument(doc) {
+            const json = doc.toString();
+            const html = doc.toHTML(mockImageUrlResolver);
+
+            document.getElementById('json-output').textContent = json;
+            document.getElementById('output').innerHTML = html;
+        }
+
+        // Vis et enkelt dokument ved oppstart
+        createSimpleDocument();
+    </script>
+</body>
+</html>

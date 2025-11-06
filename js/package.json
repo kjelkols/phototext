@@ -1,0 +1,39 @@
+{
+  "name": "@imalink/phototext",
+  "version": "1.0.0",
+  "description": "Structured photo storytelling document library for Imalink",
+  "main": "dist/phototext.js",
+  "types": "dist/phototext.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "phototext",
+    "document",
+    "imalink",
+    "photo",
+    "storytelling",
+    "html",
+    "json"
+  ],
+  "author": "Imalink",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.2.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

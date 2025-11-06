@@ -1,0 +1,30 @@
+{
+  "name": "phototext",
+  "version": "1.0.0",
+  "description": "Structured photo storytelling document library for Imalink - Frontend TypeScript/JavaScript implementation",
+  "private": true,
+  "scripts": {
+    "install": "cd js && npm install",
+    "build": "cd js && npm run build",
+    "test": "cd js && npm test",
+    "dev": "cd js && npm run watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kjelkols/phototext.git"
+  },
+  "keywords": [
+    "phototext",
+    "document",
+    "imalink",
+    "photo",
+    "storytelling",
+    "wysiwyg",
+    "editor"
+  ],
+  "author": "Kjell",
+  "license": "MIT",
+  "workspaces": [
+    "js"
+  ]
+}

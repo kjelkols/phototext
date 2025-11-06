@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoText Editor - Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .panel-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            background: #f9f9f9;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+        }
+        .panel-content {
+            padding: 20px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .actions {
+            margin-bottom: 20px;
+        }
+        .actions button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .actions button:hover {
+            background: #0056b3;
+        }
+        .actions button.secondary {
+            background: #6c757d;
+        }
+        .actions button.secondary:hover {
+            background: #545b62;
+        }
+
+        /* Editor Styles */
+        .phototext-editor {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .phototext-toolbar {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            background: #f5f5f5;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-button {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .toolbar-button:hover {
+            background: #e9e9e9;
+            border-color: #999;
+        }
+
+        .toolbar-separator {
+            color: #ccc;
+            padding: 0 4px;
+            user-select: none;
+        }
+
+        .phototext-editor-content {
+            padding: 20px;
+            min-height: 400px;
+            outline: none;
+            line-height: 1.6;
+        }
+
+        .phototext-editor-content:focus {
+            background: #fafafa;
+        }
+
+        .phototext-editor-content h1,
+        .phototext-editor-content h2,
+        .phototext-editor-content h3 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+        }
+
+        .phototext-editor-content h1 { font-size: 2em; }
+        .phototext-editor-content h2 { font-size: 1.5em; }
+        .phototext-editor-content h3 { font-size: 1.25em; }
+
+        .phototext-editor-content p {
+            margin: 1em 0;
+        }
+
+        .phototext-image-block {
+            position: relative;
+            margin: 2em 0;
+            text-align: center;
+            border: 2px dashed #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .phototext-image-block img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .phototext-image-block figcaption {
+            margin-top: 0.5em;
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+
+        .remove-image-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .phototext-image-block:hover .remove-image-btn {
+            opacity: 1;
+        }
+
+        .status {
+            padding: 10px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PhotoText WYSIWYG Editor - Demo</h1>
+    
+    <div class="status" id="status">
+        Klar til bruk. Rediger dokumentet nedenfor.
+    </div>
+
+    <div class="actions">
+        <button onclick="saveDocument()">💾 Lagre JSON</button>
+        <button onclick="loadSampleDocument()">📄 Last Eksempel</button>
+        <button onclick="clearEditor()" class="secondary">🗑️ Tøm Editor</button>
+        <button onclick="exportHTML()" class="secondary">⬇️ Eksporter HTML</button>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">Editor</div>
+            <div class="panel-content">
+                <div id="editor-container"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">JSON Output (Live)</div>
+            <div class="panel-content">
+                <pre id="json-output"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simplified PhotoText implementation for demo
+        // In production, import from the actual library
+
+        class InlineType {
+            static TEXT = "text";
+            static BOLD = "bold";
+            static ITALIC = "italic";
+            static BOLD_ITALIC = "bold_italic";
+        }
+
+        class InlineSpan {
+            constructor(text, style = InlineType.TEXT) {
+                this.text = text;
+                this.style = style;
+            }
+            toJSON() {
+                return { text: this.text, style: this.style };
+            }
+            toHTML() {
+                const text = this.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                switch(this.style) {
+                    case InlineType.BOLD: return `<strong>${text}</strong>`;
+                    case InlineType.ITALIC: return `<em>${text}</em>`;
+                    case InlineType.BOLD_ITALIC: return `<strong><em>${text}</em></strong>`;
+                    default: return text;
+                }
+            }
+        }
+
+        class HeadingBlock {
+            constructor(level, content = []) {
+                this.level = level;
+                this.content = content;
+            }
+            toJSON() {
+                return { type: "heading", level: this.level, content: this.content.map(s => s.toJSON()) };
+            }
+            toHTML() {
+                return `<h${this.level}>${this.content.map(s => s.toHTML()).join('')}</h${this.level}>`;
+            }
+            getText() {
+                return this.content.map(s => s.text).join('');
+            }
+        }
+
+        class ParagraphBlock {
+            constructor(content = []) {
+                this.content = content;
+            }
+            toJSON() {
+                return { type: "paragraph", content: this.content.map(s => s.toJSON()) };
+            }
+            toHTML() {
+                return `<p>${this.content.map(s => s.toHTML()).join('')}</p>`;
+            }
+        }
+
+        class ImageBlock {
+            constructor(imageId, caption, alt) {
+                this.imageId = imageId;
+                this.caption = caption;
+                this.alt = alt;
+            }
+            toJSON() {
+                return { type: "image", imageId: this.imageId, caption: this.caption, alt: this.alt };
+            }
+            toHTML(resolver) {
+                const url = resolver ? resolver(this.imageId) : `#${this.imageId}`;
+                return `<img src="${url}" alt="${this.alt || ''}">`;
+            }
+        }
+
+        class PhotoDocument {
+            constructor(title, description = '') {
+                this.version = "1.0";
+                this.title = title;
+                this.description = description;
+                this.created = new Date();
+                this.modified = new Date();
+                this.metadata = {};
+                this.blocks = [];
+            }
+            addBlock(block) {
+                this.blocks.push(block);
+                this.modified = new Date();
+            }
+            toJSON() {
+                return {
+                    version: this.version,
+                    title: this.title,
+                    description: this.description,
+                    created: this.created.toISOString(),
+                    modified: this.modified.toISOString(),
+                    metadata: this.metadata,
+                    blocks: this.blocks.map(b => b.toJSON())
+                };
+            }
+            toString() {
+                return JSON.stringify(this.toJSON(), null, 2);
+            }
+            toHTML(resolver) {
+                return this.blocks.map(b => b.toHTML ? b.toHTML(resolver) : '').join('\n');
+            }
+        }
+
+        // Simple Editor Implementation
+        class SimpleEditor {
+            constructor(container, doc) {
+                this.container = container;
+                this.document = doc;
+                this.onChange = null;
+                this.render();
+            }
+
+            render() {
+                this.container.innerHTML = '';
+                
+                // Toolbar
+                const toolbar = this.createToolbar();
+                this.container.appendChild(toolbar);
+
+                // Content
+                const content = document.createElement('div');
+                content.className = 'phototext-editor-content';
+                content.contentEditable = 'true';
+                content.innerHTML = this.document.blocks.map((b, i) => this.renderBlock(b, i)).join('');
+                
+                content.addEventListener('input', () => this.handleInput(content));
+                
+                this.container.appendChild(content);
+            }
+
+            createToolbar() {
+                const toolbar = document.createElement('div');
+                toolbar.className = 'phototext-toolbar';
+                
+                const buttons = [
+                    { text: 'H1', title: 'Heading 1', action: () => this.addHeading(1) },
+                    { text: 'H2', title: 'Heading 2', action: () => this.addHeading(2) },
+                    { text: 'H3', title: 'Heading 3', action: () => this.addHeading(3) },
+                    { text: '¶', title: 'Paragraph', action: () => this.addParagraph() },
+                    { text: '🖼️', title: 'Image', action: () => this.addImage() },
+                ];
+
+                buttons.forEach(btn => {
+                    const button = document.createElement('button');
+                    button.className = 'toolbar-button';
+                    button.textContent = btn.text;
+                    button.title = btn.title;
+                    button.onclick = (e) => {
+                        e.preventDefault();
+                        btn.action();
+                    };
+                    toolbar.appendChild(button);
+                });
+
+                return toolbar;
+            }
+
+            renderBlock(block, index) {
+                if (block instanceof HeadingBlock) {
+                    return `<h${block.level} data-index="${index}">${block.getText()}</h${block.level}>`;
+                } else if (block instanceof ParagraphBlock) {
+                    return `<p data-index="${index}">${block.content.map(s => s.toHTML()).join('')}</p>`;
+                } else if (block instanceof ImageBlock) {
+                    const url = `https://via.placeholder.com/600x300?text=Image+${block.imageId.substring(0, 8)}`;
+                    return `<figure class="phototext-image-block" data-index="${index}">
+                        <img src="${url}" alt="${block.alt || ''}">
+                        <figcaption contenteditable="true">${block.caption || ''}</figcaption>
+                        <button class="remove-image-btn" onclick="removeBlock(${index})">×</button>
+                    </figure>`;
+                }
+                return '';
+            }
+
+            handleInput(content) {
+                // Simplified - in real implementation, parse content properly
+                this.document.modified = new Date();
+                if (this.onChange) {
+                    this.onChange(this.document);
+                }
+            }
+
+            addHeading(level) {
+                this.document.addBlock(new HeadingBlock(level, [new InlineSpan('New Heading')]));
+                this.render();
+                if (this.onChange) this.onChange(this.document);
+            }
+
+            addParagraph() {
+                this.document.addBlock(new ParagraphBlock([new InlineSpan('New paragraph')]));
+                this.render();
+                if (this.onChange) this.onChange(this.document);
+            }
+
+            addImage() {
+                const imageId = 'img_' + Math.random().toString(36).substring(7);
+                this.document.addBlock(new ImageBlock(imageId, 'New image', 'Image description'));
+                this.render();
+                if (this.onChange) this.onChange(this.document);
+            }
+
+            getDocument() {
+                return this.document;
+            }
+        }
+
+        // Global functions
+        let editor = null;
+
+        function initEditor() {
+            const doc = new PhotoDocument('Mitt Dokument', 'En beskrivelse');
+            doc.addBlock(new HeadingBlock(1, [new InlineSpan('Velkommen til PhotoText Editor')]));
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Dette er en '),
+                new InlineSpan('WYSIWYG-editor', InlineType.BOLD),
+                new InlineSpan(' for PhotoText-dokumenter.')
+            ]));
+
+            const container = document.getElementById('editor-container');
+            editor = new SimpleEditor(container, doc);
+            editor.onChange = (doc) => {
+                updateJSON();
+                showStatus('Dokument oppdatert', 'success');
+            };
+
+            updateJSON();
+        }
+
+        function updateJSON() {
+            const json = editor.getDocument().toString();
+            document.getElementById('json-output').textContent = json;
+        }
+
+        function saveDocument() {
+            const json = editor.getDocument().toString();
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'phototext-document.json';
+            a.click();
+            showStatus('Dokument lagret!', 'success');
+        }
+
+        function loadSampleDocument() {
+            const doc = new PhotoDocument('Eksempel Dokument', 'Et rikt eksempel');
+            doc.addBlock(new HeadingBlock(1, [new InlineSpan('Min Reise')]));
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Dette er et '),
+                new InlineSpan('eksempel', InlineType.BOLD),
+                new InlineSpan(' på et PhotoText-dokument.')
+            ]));
+            doc.addBlock(new ImageBlock('sample123', 'Et vakkert bilde', 'Beskrivelse'));
+            doc.addBlock(new HeadingBlock(2, [new InlineSpan('Detaljer')]));
+            doc.addBlock(new ParagraphBlock([
+                new InlineSpan('Her er mer '),
+                new InlineSpan('informasjon', InlineType.ITALIC),
+                new InlineSpan(' om reisen.')
+            ]));
+
+            const container = document.getElementById('editor-container');
+            editor = new SimpleEditor(container, doc);
+            editor.onChange = updateJSON;
+            updateJSON();
+            showStatus('Eksempel lastet!', 'success');
+        }
+
+        function clearEditor() {
+            if (confirm('Er du sikker på at du vil tømme editoren?')) {
+                const doc = new PhotoDocument('Nytt Dokument');
+                const container = document.getElementById('editor-container');
+                editor = new SimpleEditor(container, doc);
+                editor.onChange = updateJSON;
+                updateJSON();
+                showStatus('Editor tømt', 'info');
+            }
+        }
+
+        function exportHTML() {
+            const doc = editor.getDocument();
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${doc.title}</title>
+    <style>
+        body { max-width: 800px; margin: 0 auto; padding: 20px; font-family: sans-serif; }
+        img { max-width: 100%; height: auto; }
+        figcaption { text-align: center; font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+${doc.toHTML((id) => `https://via.placeholder.com/600x300?text=Image+${id.substring(0, 8)}`)}
+</body>
+</html>`;
+            
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'phototext-export.html';
+            a.click();
+            showStatus('HTML eksportert!', 'success');
+        }
+
+        function removeBlock(index) {
+            editor.getDocument().blocks.splice(index, 1);
+            editor.render();
+            updateJSON();
+            showStatus('Blokk fjernet', 'info');
+        }
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.background = type === 'success' ? '#d4edda' : '#d1ecf1';
+            status.style.borderColor = type === 'success' ? '#c3e6cb' : '#bee5eb';
+            status.style.color = type === 'success' ? '#155724' : '#0c5460';
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', initEditor);
+    </script>
+</body>
+</html>
