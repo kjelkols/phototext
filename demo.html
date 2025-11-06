@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoText Editor - Lokal Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls button {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .controls button.primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .controls button.primary:hover {
+            background: #0056b3;
+        }
+
+        .controls button.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .controls button.secondary:hover {
+            background: #545b62;
+        }
+
+        .controls button.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .controls button.success:hover {
+            background: #218838;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            height: calc(100vh - 250px);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: 1rem;
+        }
+
+        /* Editor styles */
+        .phototext-editor {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ced4da;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            min-width: 40px;
+        }
+
+        .toolbar button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .toolbar button:active {
+            background: #dee2e6;
+        }
+
+        .toolbar .separator {
+            width: 1px;
+            background: #dee2e6;
+            margin: 0 0.25rem;
+        }
+
+        /* Document metadata section */
+        .document-metadata {
+            padding: 2rem;
+            border-bottom: 2px solid #dee2e6;
+            background: white;
+        }
+
+        .metadata-field {
+            margin-bottom: 1.5rem;
+        }
+
+        .metadata-field label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metadata-field label .required {
+            color: #dc3545;
+            margin-left: 0.25rem;
+        }
+
+        .metadata-field input,
+        .metadata-field textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .metadata-field input:focus,
+        .metadata-field textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px #007bff22;
+        }
+
+        .metadata-field input.title-input {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .metadata-field textarea {
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.6;
+        }
+
+        .cover-image-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .cover-preview {
+            width: 120px;
+            height: 80px;
+            border: 2px dashed #dee2e6;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .cover-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cover-preview.empty {
+            color: #adb5bd;
+            font-size: 2rem;
+        }
+
+        .cover-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .cover-actions button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ced4da;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .cover-actions button:hover {
+            background: #e9ecef;
+        }
+
+        .cover-actions button.remove {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .cover-actions button.remove:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .editor-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            outline: none;
+            line-height: 1.7;
+        }
+
+        .editor-content:focus {
+            background: #fafafa;
+        }
+
+        .editor-content h1,
+        .editor-content h2,
+        .editor-content h3 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .editor-content h1:first-child,
+        .editor-content h2:first-child,
+        .editor-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .editor-content h1 { font-size: 2em; }
+        .editor-content h2 { font-size: 1.5em; }
+        .editor-content h3 { font-size: 1.25em; }
+
+        .editor-content p {
+            margin: 1em 0;
+            min-height: 1.5em;
+        }
+
+        .editor-content p:empty:before {
+            content: 'Skriv noe her...';
+            color: #adb5bd;
+        }
+
+        .editor-content ul {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        .editor-content li {
+            margin: 0.5em 0;
+        }
+
+        .image-block {
+            position: relative;
+            margin: 2em 0;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            transition: border-color 0.2s;
+        }
+
+        .image-block:hover {
+            border-color: #adb5bd;
+        }
+
+        .image-grid {
+            display: grid;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Auto-layout based on image count */
+        .image-grid.layout-1 {
+            grid-template-columns: 1fr;
+        }
+
+        .image-grid.layout-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .image-grid.layout-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .image-grid.layout-4 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .image-grid.layout-5,
+        .image-grid.layout-6 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .image-grid img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .image-grid.layout-1 img {
+            height: auto;
+            max-height: 500px;
+        }
+
+        .image-caption {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            font-size: 0.95rem;
+            color: #495057;
+            text-align: center;
+            border-radius: 4px;
+            background: white;
+            min-height: 2rem;
+            outline: none;
+        }
+
+        .image-caption:empty:before {
+            content: 'Skriv en bildetekst...';
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+        .image-caption:focus {
+            background: #fff;
+            box-shadow: 0 0 0 2px #007bff33;
+        }
+
+        .image-block .remove-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #dc3545;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .image-block:hover .remove-btn {
+            opacity: 1;
+        }
+
+        .image-block .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .add-image-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #007bff;
+            background: white;
+            color: #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .add-image-btn:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .add-image-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* JSON viewer */
+        pre {
+            margin: 0;
+            padding: 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .json-key {
+            color: #0451a5;
+        }
+
+        .json-string {
+            color: #a31515;
+        }
+
+        .json-number {
+            color: #098658;
+        }
+
+        .json-boolean {
+            color: #0000ff;
+        }
+
+        .json-null {
+            color: #0000ff;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 1rem 1.5rem;
+            min-width: 250px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .toast.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .toast.info {
+            border-left: 4px solid #17a2b8;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-icon {
+            font-size: 1.5rem;
+        }
+
+        .toast-message {
+            flex: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .workspace {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .panel {
+                min-height: 400px;
+            }
+        }
+
+        /* Document type selector */
+        .type-selector {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .type-selector label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .type-selector select {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .type-selector select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px #007bff33;
+        }
+
+        .type-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .type-badge.general {
+            background: #e7f3ff;
+            color: #0056b3;
+        }
+
+        .type-badge.album {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .type-badge.slideshow {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .toolbar button.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 PhotoText Editor - Lokal Demo</h1>
+        <p>Test de tre spesialtypene: Generell, Album og Slideshow</p>
+    </div>
+
+    <div class="main">
+        <div class="controls">
+            <div class="type-selector">
+                <label>Dokumenttype:</label>
+                <select id="doc-type" onchange="changeDocumentType()">
+                    <option value="general">📝 Generell (tekst + bilder)</option>
+                    <option value="album">📸 Album (kun bilder)</option>
+                    <option value="slideshow">🎬 Slideshow (kun enkeltbilder)</option>
+                </select>
+                <span id="type-badge" class="type-badge general">Generell</span>
+            </div>
+            <button class="primary" onclick="saveJSON()">
+                💾 Last ned JSON
+            </button>
+            <button class="secondary" onclick="loadExample()">
+                📄 Last eksempel
+            </button>
+            <button class="secondary" onclick="clearAll()">
+                🗑️ Tøm editor
+            </button>
+            <button class="success" onclick="copyJSON()">
+                📋 Kopier JSON
+            </button>
+        </div>
+
+        <div class="workspace">
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Editor</span>
+                    <span id="word-count" style="font-size: 0.85rem; color: #6c757d; font-weight: normal;">0 ord</span>
+                </div>
+                <div class="panel-content">
+                    <div class="phototext-editor">
+                        <div class="document-metadata">
+                            <div class="metadata-field">
+                                <label>Tittel <span class="required">*</span></label>
+                                <input type="text" id="doc-title" class="title-input" placeholder="Dokumenttittel..." value="Mitt Dokument" oninput="updateMetadata()">
+                            </div>
+                            <div class="metadata-field">
+                                <label>Abstract (valgfri)</label>
+                                <textarea id="doc-abstract" placeholder="Kort beskrivelse av dokumentet..." oninput="updateMetadata()"></textarea>
+                            </div>
+                            <div class="metadata-field">
+                                <label>Tittelbilde (valgfri)</label>
+                                <div class="cover-image-selector">
+                                    <div class="cover-preview empty" id="cover-preview">
+                                        🖼️
+                                    </div>
+                                    <div class="cover-actions">
+                                        <button onclick="addCoverImage()">Velg bilde</button>
+                                        <button class="remove" onclick="removeCoverImage()" id="remove-cover" style="display: none;">Fjern</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="toolbar" id="toolbar">
+                            <button id="btn-h1" onclick="insertHeading(1)" title="Overskrift 1">H1</button>
+                            <button id="btn-h2" onclick="insertHeading(2)" title="Overskrift 2">H2</button>
+                            <button id="btn-h3" onclick="insertHeading(3)" title="Overskrift 3">H3</button>
+                            <div class="separator" id="sep-1"></div>
+                            <button id="btn-bold" onclick="toggleFormat('bold')" title="Fet (Ctrl+B)"><strong>B</strong></button>
+                            <button id="btn-italic" onclick="toggleFormat('italic')" title="Kursiv (Ctrl+I)"><em>I</em></button>
+                            <div class="separator" id="sep-2"></div>
+                            <button id="btn-list" onclick="insertList()" title="Punktliste">• Liste</button>
+                            <button id="btn-paragraph" onclick="insertParagraph()" title="Nytt avsnitt">¶ Avsnitt</button>
+                            <div class="separator" id="sep-3"></div>
+                            <button id="btn-image" onclick="insertImage()" title="Sett inn bilde">🖼️ Bilde</button>
+                        </div>
+                        <div class="editor-content" contenteditable="true" id="editor"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span>JSON Output (Live)</span>
+                    <span id="block-count" style="font-size: 0.85rem; color: #6c757d; font-weight: normal;">0 blokker</span>
+                </div>
+                <div class="panel-content">
+                    <pre id="json-output"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Document type configuration
+        const DOCUMENT_TYPES = {
+            GENERAL: 'general',
+            ALBUM: 'album',
+            SLIDESHOW: 'slideshow'
+        };
+
+        const TYPE_CONFIG = {
+            general: {
+                name: 'Generell',
+                icon: '📝',
+                allowedBlocks: ['heading', 'paragraph', 'list', 'image'],
+                allowCollages: true,
+                maxImagesPerBlock: 6,
+                toolbar: ['h1', 'h2', 'h3', 'bold', 'italic', 'list', 'paragraph', 'image'],
+                description: 'Fullt redigerbart dokument med tekst og bilder'
+            },
+            album: {
+                name: 'Album',
+                icon: '📸',
+                allowedBlocks: ['image'],
+                allowCollages: true,
+                maxImagesPerBlock: 6,
+                toolbar: ['image'],
+                description: 'Kun bilder og kollasjer - ingen fri tekst'
+            },
+            slideshow: {
+                name: 'Slideshow',
+                icon: '🎬',
+                allowedBlocks: ['image'],
+                allowCollages: false,
+                maxImagesPerBlock: 1,
+                toolbar: ['image'],
+                description: 'Kun enkeltbilder for presentasjon',
+                metadata: { duration: 5000, transition: 'fade' }
+            }
+        };
+
+        // PhotoText implementation
+        class PhotoDocument {
+            constructor(title = 'Mitt Dokument', documentType = 'general') {
+                this.version = "1.0";
+                this.documentType = documentType;
+                this.title = title;  // Required
+                this.abstract = "";  // Optional
+                this.coverImage = null;  // Optional: { hash: string, alt: string }
+                this.created = new Date().toISOString();
+                this.modified = new Date().toISOString();
+                this.metadata = TYPE_CONFIG[documentType].metadata || {};
+                this.blocks = [];
+            }
+
+            toJSON() {
+                const json = {
+                    version: this.version,
+                    documentType: this.documentType,
+                    title: this.title,
+                    created: this.created,
+                    modified: this.modified,
+                    metadata: this.metadata,
+                    blocks: this.blocks
+                };
+
+                // Add optional fields only if they have values
+                if (this.abstract && this.abstract.trim()) {
+                    json.abstract = this.abstract;
+                }
+                if (this.coverImage) {
+                    json.coverImage = this.coverImage;
+                }
+
+                return json;
+            }
+        }
+
+        // Global state - MUST be window.xxx for onclick to work
+        window.doc = new PhotoDocument('Mitt Dokument', 'general');
+        window.editor = null;
+
+        // Initialize editor
+        window.initEditor = function() {
+            console.log('Initializing editor...');
+            window.editor = document.getElementById('editor');
+            
+            if (!window.editor) {
+                console.error('Editor element not found!');
+                return;
+            }
+            
+            // Add default content
+            window.editor.innerHTML = `
+                <h1>Velkommen til PhotoText</h1>
+                <p>Dette er en <strong>WYSIWYG-editor</strong> for dokumenter med bilder.</p>
+                <p>Prøv å redigere teksten eller bytt dokumenttype for å se forskjellene.</p>
+            `;
+
+            // Event listeners
+            window.editor.addEventListener('input', window.updateDocument);
+            window.editor.addEventListener('keydown', window.handleKeyboard);
+
+            // Initialize metadata fields
+            document.getElementById('doc-title').value = window.doc.title;
+            document.getElementById('doc-abstract').value = window.doc.abstract;
+            window.updateCoverPreview();
+
+            // Initial toolbar update
+            window.updateToolbar();
+
+            // Initial update
+            window.updateDocument();
+            console.log('Editor initialized successfully!');
+        }
+
+        // Update metadata from form fields
+        window.updateMetadata = function() {
+            const title = document.getElementById('doc-title').value.trim();
+            const abstract = document.getElementById('doc-abstract').value.trim();
+
+            window.doc.title = title || 'Uten tittel';
+            window.doc.abstract = abstract;
+            window.doc.modified = new Date().toISOString();
+
+            window.updateJSON();
+        }
+
+        // Add cover image
+        window.addCoverImage = function() {
+            // Generate a mock hash (in real app, this would be SHA256 of the image file)
+            const hash = 'sha256_' + Array.from({length: 64}, () => 
+                Math.floor(Math.random() * 16).toString(16)).join('');
+
+            window.doc.coverImage = {
+                hash: hash,
+                alt: 'Tittelbilde'
+            };
+
+            window.updateCoverPreview();
+            window.updateMetadata();
+            window.showToast('Tittelbilde lagt til', 'success');
+        }
+
+        // Remove cover image
+        window.removeCoverImage = function() {
+            window.doc.coverImage = null;
+            window.updateCoverPreview();
+            window.updateMetadata();
+            window.showToast('Tittelbilde fjernet', 'info');
+        }
+
+        // Update cover image preview
+        window.updateCoverPreview = function() {
+            const preview = document.getElementById('cover-preview');
+            const removeBtn = document.getElementById('remove-cover');
+
+            if (window.doc.coverImage) {
+                const placeholder = `https://via.placeholder.com/1200x600/6c757d/ffffff?text=Tittelbilde`;
+                preview.innerHTML = `<img src="${placeholder}" alt="${window.doc.coverImage.alt}">`;
+                preview.classList.remove('empty');
+                removeBtn.style.display = 'block';
+            } else {
+                preview.innerHTML = '🖼️';
+                preview.classList.add('empty');
+                removeBtn.style.display = 'none';
+            }
+        }
+
+        // Update toolbar based on document type
+        window.updateToolbar = function() {
+            const config = TYPE_CONFIG[window.doc.documentType];
+            const toolbar = config.toolbar;
+            
+            // Update all buttons
+            ['h1', 'h2', 'h3', 'bold', 'italic', 'list', 'paragraph', 'image'].forEach(btn => {
+                const element = document.getElementById(`btn-${btn}`);
+                if (element) {
+                    if (toolbar.includes(btn)) {
+                        element.classList.remove('disabled');
+                    } else {
+                        element.classList.add('disabled');
+                    }
+                }
+            });
+
+            // Update separators
+            ['sep-1', 'sep-2', 'sep-3'].forEach(sep => {
+                const element = document.getElementById(sep);
+                if (element) {
+                    // Hide separators in album/slideshow mode
+                    element.style.display = config.allowedBlocks.length === 1 ? 'none' : 'block';
+                }
+            });
+
+            // Update badge
+            const badge = document.getElementById('type-badge');
+            badge.textContent = config.name;
+            badge.className = `type-badge ${window.doc.documentType}`;
+        }
+
+        // Change document type
+        window.changeDocumentType = function() {
+            const select = document.getElementById('doc-type');
+            const newType = select.value;
+            const oldType = window.doc.documentType;
+            
+            if (newType === oldType) return;
+
+            // Check if there's content that would be invalid
+            const hasInvalidContent = window.doc.blocks.some(block => {
+                const config = TYPE_CONFIG[newType];
+                if (!config.allowedBlocks.includes(block.type)) {
+                    return true;
+                }
+                if (block.type === 'image' && !config.allowCollages && block.images.length > 1) {
+                    return true;
+                }
+                return false;
+            });
+
+            if (hasInvalidContent && !confirm(
+                `Endring til ${TYPE_CONFIG[newType].name} vil fjerne innhold som ikke er tillatt i denne typen. Fortsette?`
+            )) {
+                select.value = oldType;
+                return;
+            }
+
+            // Update document type
+            window.doc.documentType = newType;
+            window.doc.metadata = TYPE_CONFIG[newType].metadata || {};
+            
+            // Clean up invalid blocks
+            if (hasInvalidContent) {
+                window.validateAndCleanContent();
+            }
+
+            // Update UI
+            window.updateToolbar();
+            window.updateDocument();
+            window.updateMetadata();
+            
+            window.showToast(`Endret til ${TYPE_CONFIG[newType].name}-modus`, 'info');
+        }
+
+        // Validate and clean content based on document type
+        window.validateAndCleanContent = function() {
+            const config = TYPE_CONFIG[window.doc.documentType];
+            const validChildren = [];
+
+            for (let child of window.editor.children) {
+                const block = window.parseBlock(child);
+                
+                if (!block) continue;
+
+                // Check if block type is allowed
+                if (!config.allowedBlocks.includes(block.type)) {
+                    child.remove();
+                    continue;
+                }
+
+                // Check image constraints
+                if (block.type === 'image') {
+                    if (!config.allowCollages && block.images.length > 1) {
+                        child.remove();
+                        continue;
+                    }
+                }
+
+                validChildren.push(child);
+            }
+
+            // If everything was removed, add placeholder
+            if (validChildren.length === 0) {
+                if (config.allowedBlocks.includes('paragraph')) {
+                    window.editor.innerHTML = '<p>Start med å skrive...</p>';
+                } else {
+                    window.editor.innerHTML = '';
+                }
+            }
+        }
+
+        // Parse editor content to PhotoDocument
+        window.updateDocument = function() {
+            if (!window.editor) return;
+            
+            window.doc.modified = new Date().toISOString();
+            window.doc.blocks = [];
+
+            const children = window.editor.children;
+            for (let child of children) {
+                const block = window.parseBlock(child);
+                if (block) {
+                    window.doc.blocks.push(block);
+                }
+            }
+
+            window.updateJSON();
+            window.updateStats();
+        }
+
+        window.parseBlock = function(element) {
+            const tagName = element.tagName.toLowerCase();
+            
+            if (tagName.match(/^h[1-6]$/)) {
+                const level = parseInt(tagName[1]);
+                return {
+                    type: 'heading',
+                    level: level,
+                    content: parseInlineContent(element)
+                };
+            } else if (tagName === 'p') {
+                return {
+                    type: 'paragraph',
+                    content: parseInlineContent(element)
+                };
+            } else if (tagName === 'ul') {
+                const items = [];
+                for (let li of element.querySelectorAll('li')) {
+                    items.push(parseInlineContent(li));
+                }
+                return {
+                    type: 'list',
+                    items: items
+                };
+            } else if (element.classList.contains('image-block')) {
+                const images = [];
+                const imgElements = element.querySelectorAll('.image-grid img');
+                
+                for (let img of imgElements) {
+                    images.push({
+                        imageId: img.dataset.imageId || 'unknown',
+                        alt: img.alt || ''
+                    });
+                }
+                
+                const captionEl = element.querySelector('.image-caption');
+                const caption = captionEl ? captionEl.textContent.trim() : '';
+                
+                return {
+                    type: 'image',
+                    images: images,
+                    caption: caption,
+                    layout: 'auto'
+                };
+            }
+            
+            return null;
+        }
+
+        window.parseInlineContent = function(element) {
+            const spans = [];
+            
+            function traverse(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent;
+                    if (text.trim()) {
+                        spans.push({ text: text, style: 'text' });
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = node.tagName.toLowerCase();
+                    const text = node.textContent;
+                    
+                    if (tagName === 'strong' || tagName === 'b') {
+                        if (node.querySelector('em, i')) {
+                            spans.push({ text: text, style: 'bold_italic' });
+                        } else {
+                            spans.push({ text: text, style: 'bold' });
+                        }
+                    } else if (tagName === 'em' || tagName === 'i') {
+                        if (node.querySelector('strong, b')) {
+                            spans.push({ text: text, style: 'bold_italic' });
+                        } else {
+                            spans.push({ text: text, style: 'italic' });
+                        }
+                    } else {
+                        node.childNodes.forEach(traverse);
+                    }
+                }
+            }
+
+            element.childNodes.forEach(traverse);
+            
+            // Merge consecutive text spans
+            const merged = [];
+            for (let span of spans) {
+                const last = merged[merged.length - 1];
+                if (last && last.style === span.style) {
+                    last.text += span.text;
+                } else {
+                    merged.push(span);
+                }
+            }
+            
+            return merged.length > 0 ? merged : [{ text: '', style: 'text' }];
+        }
+
+        // Update JSON display
+        window.updateJSON = function() {
+            const json = JSON.stringify(window.doc.toJSON(), null, 2);
+            const output = document.getElementById('json-output');
+            output.textContent = json;
+            
+            // Syntax highlighting (simple)
+            window.highlightJSON(output);
+        }
+
+        window.highlightJSON = function(element) {
+            let html = element.textContent;
+            
+            // Keys
+            html = html.replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:');
+            
+            // Strings
+            html = html.replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>');
+            
+            // Numbers
+            html = html.replace(/: (\d+)/g, ': <span class="json-number">$1</span>');
+            
+            // Booleans
+            html = html.replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>');
+            
+            // Null
+            html = html.replace(/: (null)/g, ': <span class="json-null">$1</span>');
+            
+            element.innerHTML = html;
+        }
+
+        // Update statistics
+        window.updateStats = function() {
+            // Word count
+            const text = window.editor.textContent;
+            const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+            document.getElementById('word-count').textContent = `${words.length} ord`;
+            
+            // Block count
+            document.getElementById('block-count').textContent = `${window.doc.blocks.length} blokker`;
+        }
+
+        // Toolbar functions
+        window.insertHeading = function(level) {
+            console.log('Insert heading:', level);
+            const h = document.createElement(`h${level}`);
+            h.textContent = 'Ny overskrift';
+            window.editor.appendChild(h);
+            
+            // Focus and select
+            const range = document.createRange();
+            range.selectNodeContents(h);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            window.updateDocument();
+        }
+
+        window.insertParagraph = function() {
+            console.log('Insert paragraph');
+            const p = document.createElement('p');
+            p.textContent = 'Nytt avsnitt';
+            window.editor.appendChild(p);
+            
+            // Focus
+            const range = document.createRange();
+            range.selectNodeContents(p);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            window.updateDocument();
+        }
+
+        window.insertList = function() {
+            console.log('Insert list');
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            li.textContent = 'Listepunkt';
+            ul.appendChild(li);
+            window.editor.appendChild(ul);
+            
+            // Focus
+            const range = document.createRange();
+            range.selectNodeContents(li);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            window.updateDocument();
+        }
+
+        window.insertImage = function() {
+            console.log('Insert image');
+            const config = TYPE_CONFIG[window.doc.documentType];
+            
+            const imageId = 'img_' + Date.now();
+            const placeholder = `https://via.placeholder.com/800x400/e9ecef/6c757d?text=Eksempelbilde+${imageId.substring(4, 10)}`;
+            
+            const block = document.createElement('div');
+            block.className = 'image-block';
+            
+            // Different HTML based on document type
+            if (config.allowCollages) {
+                block.innerHTML = `
+                    <div class="image-grid layout-1">
+                        <img src="${placeholder}" alt="Eksempelbilde" data-image-id="${imageId}">
+                    </div>
+                    <div class="image-caption" contenteditable="true" placeholder="Legg til en bildetekst..."></div>
+                    <button class="add-image-btn" onclick="addImageToCollage(this)">+ Legg til bilde</button>
+                    <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                `;
+            } else {
+                // Slideshow mode - no collage button
+                block.innerHTML = `
+                    <div class="image-grid layout-1">
+                        <img src="${placeholder}" alt="Eksempelbilde" data-image-id="${imageId}">
+                    </div>
+                    <div class="image-caption" contenteditable="true" placeholder="Legg til en bildetekst..."></div>
+                    <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                `;
+            }
+            
+            // Add input listener to caption
+            const caption = block.querySelector('.image-caption');
+            caption.addEventListener('input', window.updateDocument);
+            
+            window.editor.appendChild(block);
+            window.updateDocument();
+            
+            const msg = config.allowCollages 
+                ? 'Bilde lagt til! Klikk + for å lage kollasj.' 
+                : 'Bilde lagt til! (Slideshow: kun enkeltbilder)';
+            window.showToast(msg, 'info');
+        }
+
+        window.addImageToCollage = function(btn) {
+            console.log('Add image to collage');
+            const config = TYPE_CONFIG[window.doc.documentType];
+            
+            // Check if collages are allowed
+            if (!config.allowCollages) {
+                window.showToast('Kollasjer er ikke tillatt i slideshow-modus', 'error');
+                return;
+            }
+            
+            const block = btn.closest('.image-block');
+            const grid = block.querySelector('.image-grid');
+            const currentImages = grid.querySelectorAll('img');
+            
+            // Max images check
+            if (currentImages.length >= config.maxImagesPerBlock) {
+                window.showToast(`Maks ${config.maxImagesPerBlock} bilder per kollasj`, 'error');
+                return;
+            }
+            
+            const imageId = 'img_' + Date.now();
+            const placeholder = `https://via.placeholder.com/400x300/007bff/ffffff?text=Bilde+${imageId.substring(4, 10)}`;
+            
+            const img = document.createElement('img');
+            img.src = placeholder;
+            img.alt = 'Eksempelbilde';
+            img.dataset.imageId = imageId;
+            
+            grid.appendChild(img);
+            
+            // Update layout class
+            const imageCount = grid.querySelectorAll('img').length;
+            grid.className = `image-grid layout-${imageCount}`;
+            
+            // Disable button if at max
+            if (imageCount >= config.maxImagesPerBlock) {
+                btn.disabled = true;
+                btn.textContent = `Maks ${config.maxImagesPerBlock} bilder`;
+            }
+            
+            window.updateDocument();
+            window.showToast(`Bilde ${imageCount} av ${config.maxImagesPerBlock} lagt til`, 'success');
+        }
+
+        window.removeImageBlock = function(btn) {
+            console.log('Remove image');
+            btn.closest('.image-block').remove();
+            window.updateDocument();
+            window.showToast('Bilde fjernet', 'info');
+        }
+
+        window.toggleFormat = function(format) {
+            document.execCommand(format, false, null);
+        }
+
+        window.handleKeyboard = function(e) {
+            // Ctrl+B for bold
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                window.toggleFormat('bold');
+            }
+            
+            // Ctrl+I for italic
+            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                window.toggleFormat('italic');
+            }
+
+            // Enter in heading creates paragraph
+            if (e.key === 'Enter') {
+                const sel = window.getSelection();
+                const node = sel.anchorNode;
+                const parent = node?.parentElement;
+                
+                if (parent?.tagName.match(/^H[1-6]$/)) {
+                    e.preventDefault();
+                    window.insertParagraph();
+                }
+            }
+        }
+
+        // Control functions
+        window.saveJSON = function() {
+            console.log('Save JSON');
+            const json = JSON.stringify(window.doc.toJSON(), null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `phototext-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            window.showToast('JSON lastet ned!', 'success');
+        }
+
+        window.copyJSON = function() {
+            console.log('Copy JSON');
+            const json = JSON.stringify(window.doc.toJSON(), null, 2);
+            navigator.clipboard.writeText(json).then(() => {
+                window.showToast('JSON kopiert til utklippstavlen!', 'success');
+            });
+        }
+
+        window.loadExample = function() {
+            console.log('Load example');
+            const docType = window.doc.documentType;
+            
+            // Update metadata based on type
+            if (docType === 'general') {
+                window.doc.title = 'Sommerferien 2024';
+                window.doc.abstract = 'En minnerik reise til Roma med besøk til historiske severdigheter og kulinariske opplevelser.';
+                window.doc.coverImage = {
+                    hash: 'sha256_a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+                    alt: 'Roma skyline ved solnedgang'
+                };
+            } else if (docType === 'album') {
+                window.doc.title = 'Portrettsesjonen ved stranden';
+                window.doc.abstract = 'Profesjonell fotografering med fokus på naturlig lys og sommerlige motiver.';
+                window.doc.coverImage = {
+                    hash: 'sha256_fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321',
+                    alt: 'Hovedportrett fra sesjonen'
+                };
+            } else if (docType === 'slideshow') {
+                window.doc.title = 'Kvartalspresentasjon Q3 2024';
+                window.doc.abstract = '';  // No abstract for slideshow
+                window.doc.coverImage = null;  // No cover for slideshow
+            }
+
+            // Update metadata UI
+            document.getElementById('doc-title').value = window.doc.title;
+            document.getElementById('doc-abstract').value = window.doc.abstract;
+            window.updateCoverPreview();
+            
+            // Different examples based on document type
+            if (docType === 'general') {
+                window.editor.innerHTML = `
+                    <h1>Roma - Den evige byen</h1>
+                    <p>Dette er et <strong>eksempel</strong> på et generelt PhotoText-dokument med tekst og bilder.</p>
+                    
+                    <h2>Colosseum</h2>
+                    <p>Vi besøkte den <em>vakre</em> byen Roma i <strong>august</strong>.</p>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/800x400/007bff/ffffff?text=Colosseum" alt="Colosseum i Roma" data-image-id="img_colosseum">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Det imponerende Colosseum i solnedgang</div>
+                        <button class="add-image-btn" onclick="addImageToCollage(this)">+ Legg til bilde</button>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <h2>Høydepunkter</h2>
+                    <ul>
+                        <li><strong>Colosseum</strong> - Imponerende historie</li>
+                        <li><em>Vatikanet</em> - Sistine-kapellet</li>
+                        <li>Trevi-fontenen - Kastet mynt</li>
+                    </ul>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-4">
+                            <img src="https://via.placeholder.com/400x300/28a745/ffffff?text=Vatikanet" alt="Vatikanet" data-image-id="img_vatican">
+                            <img src="https://via.placeholder.com/400x300/ffc107/ffffff?text=Trevi" alt="Trevi-fontenen" data-image-id="img_trevi">
+                            <img src="https://via.placeholder.com/400x300/dc3545/ffffff?text=Pantheon" alt="Pantheon" data-image-id="img_pantheon">
+                            <img src="https://via.placeholder.com/400x300/17a2b8/ffffff?text=Spansk+trapp" alt="Spansk trapp" data-image-id="img_steps">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Fire favorittplasser i Roma</div>
+                        <button class="add-image-btn" onclick="addImageToCollage(this)">+ Legg til bilde</button>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <p>Dette var en <strong><em>fantastisk</em></strong> reise!</p>
+                `;
+            } else if (docType === 'album') {
+                window.editor.innerHTML = `
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/800x500/007bff/ffffff?text=Portrettbilde" alt="Portrett" data-image-id="img_portrait">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Portrettfotografering ved stranden</div>
+                        <button class="add-image-btn" onclick="addImageToCollage(this)">+ Legg til bilde</button>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-6">
+                            <img src="https://via.placeholder.com/400x300/28a745/ffffff?text=Bilde+1" alt="Album bilde 1" data-image-id="img_alb1">
+                            <img src="https://via.placeholder.com/400x300/ffc107/ffffff?text=Bilde+2" alt="Album bilde 2" data-image-id="img_alb2">
+                            <img src="https://via.placeholder.com/400x300/dc3545/ffffff?text=Bilde+3" alt="Album bilde 3" data-image-id="img_alb3">
+                            <img src="https://via.placeholder.com/400x300/17a2b8/ffffff?text=Bilde+4" alt="Album bilde 4" data-image-id="img_alb4">
+                            <img src="https://via.placeholder.com/400x300/6c757d/ffffff?text=Bilde+5" alt="Album bilde 5" data-image-id="img_alb5">
+                            <img src="https://via.placeholder.com/400x300/6f42c1/ffffff?text=Bilde+6" alt="Album bilde 6" data-image-id="img_alb6">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Samling fra fotograferingen - 6 favorittbilder</div>
+                        <button class="add-image-btn" onclick="addImageToCollage(this)" disabled>Maks 6 bilder</button>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-3">
+                            <img src="https://via.placeholder.com/400x400/fd7e14/ffffff?text=Detalj+1" alt="Detalj 1" data-image-id="img_det1">
+                            <img src="https://via.placeholder.com/400x400/e83e8c/ffffff?text=Detalj+2" alt="Detalj 2" data-image-id="img_det2">
+                            <img src="https://via.placeholder.com/400x400/20c997/ffffff?text=Detalj+3" alt="Detalj 3" data-image-id="img_det3">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Close-up detaljer</div>
+                        <button class="add-image-btn" onclick="addImageToCollage(this)">+ Legg til bilde</button>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                `;
+            } else if (docType === 'slideshow') {
+                window.editor.innerHTML = `
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/1200x800/007bff/ffffff?text=Slide+1+-+Introduksjon" alt="Introduksjon" data-image-id="img_slide1">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Velkommen til presentasjonen</div>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/1200x800/28a745/ffffff?text=Slide+2+-+Oversikt" alt="Oversikt" data-image-id="img_slide2">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Hovedpunkter i dag</div>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/1200x800/ffc107/ffffff?text=Slide+3+-+Detaljer" alt="Detaljer" data-image-id="img_slide3">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Viktige detaljer å merke seg</div>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                    
+                    <div class="image-block">
+                        <div class="image-grid layout-1">
+                            <img src="https://via.placeholder.com/1200x800/dc3545/ffffff?text=Slide+4+-+Oppsummering" alt="Oppsummering" data-image-id="img_slide4">
+                        </div>
+                        <div class="image-caption" contenteditable="true">Takk for oppmerksomheten!</div>
+                        <button class="remove-btn" onclick="removeImageBlock(this)">×</button>
+                    </div>
+                `;
+            }
+            
+            // Add listeners to captions
+            const captions = window.editor.querySelectorAll('.image-caption');
+            captions.forEach(caption => {
+                caption.addEventListener('input', window.updateDocument);
+            });
+            
+            window.updateDocument();
+            window.showToast(`Eksempel for ${TYPE_CONFIG[docType].name} lastet!`, 'success');
+        }
+
+        window.clearAll = function() {
+            console.log('Clear all');
+            if (confirm('Er du sikker på at du vil tømme editoren?')) {
+                const config = TYPE_CONFIG[window.doc.documentType];
+                
+                // Set appropriate placeholder based on type
+                if (config.allowedBlocks.includes('paragraph')) {
+                    window.editor.innerHTML = '<p>Start med å skrive...</p>';
+                } else {
+                    window.editor.innerHTML = '';
+                }
+                
+                window.doc = new PhotoDocument('Nytt Dokument', window.doc.documentType);
+                window.updateDocument();
+                window.showToast('Editor tømt', 'info');
+            }
+        }
+
+        // Toast notifications
+        window.showToast = function(message, type = 'info') {
+            const icons = {
+                success: '✓',
+                error: '✗',
+                info: 'ℹ'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type]}</div>
+                <div class="toast-message">${message}</div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.initEditor);
+        } else {
+            window.initEditor();
+        }
+        
+        console.log('PhotoText demo script loaded!');
+    </script>
+</body>
+</html>
