@@ -23,8 +23,5 @@
     "editor"
   ],
   "author": "Kjell",
-  "license": "MIT",
-  "workspaces": [
-    "js"
-  ]
+  "license": "MIT"
 }

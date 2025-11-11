@@ -45,7 +45,8 @@ export class InlineSpan {
         const escapedText = this.text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
 
         switch (this.style) {
             case InlineType.BOLD:
