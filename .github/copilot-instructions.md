@@ -7,10 +7,14 @@ These notes help an AI coding agent be productive in this repo. They focus on th
 - Source code lives in `js/` (TypeScript). The library exports a runtime in `dist/` after building (`js/package.json` → `main: dist/phototext.js`).
 
 2) Key concepts and patterns you should follow
-- PhotoDocument JSON is canonical: top-level fields (version, title, metadata, blocks[]). Block types: `heading`, `paragraph`, `list`, `image`. See `js/phototext.ts` for the canonical model and serializers.
+- **Two document models:** PhotoDocument (flat) and HierarchicalDocument (nested sections). Both share the same Block types and validation rules.
+- **PhotoDocument** (flat): top-level fields (version, title, metadata, blocks[]). Block types: `heading`, `paragraph`, `list`, `image`. Flexible, allows any heading levels.
+- **HierarchicalDocument** (structured): DocumentPart tree where each part has a heading, content blocks, and optional subParts. Heading levels auto-calculated from nesting depth (max 6 levels). Enforces semantic structure.
+- **Shared constraints:** Max 6 heading levels, Imalink image IDs only (no external URLs), HTML escaping (including quotes for XSS protection).
 - Image references are Imalink image IDs (hothash). NEVER convert these to external URLs in the core model — use an `imageUrlResolver(imageId)` when rendering (`PhotoDocument.toHTML`, `ImageBlock.toHTML`).
 - Editor is `js/editor.ts`: contenteditable UI that serializes/deserializes to the PhotoDocument model. Image insertion flows call `onImagePick()` and expect a single imageId string.
 - Inline formatting is represented by `InlineSpan` and `InlineType` enums (text/bold/italic/bold_italic). The editor parses STRONG/EM tags into these types (see `parseInlineSpans`).
+- **Conversion:** Use `HierarchicalDocument.fromPhotoDocument()` and `hierarchicalDoc.toPhotoDocument()` to convert between formats. Both directions preserve all content.
 
 3) Build / test / dev workflows (explicit)
 - To install dependencies for development (root workspace uses a js workspace):
@@ -26,6 +30,8 @@ These notes help an AI coding agent be productive in this repo. They focus on th
 4) Project-specific conventions to preserve
 - Keep TypeScript source under `js/` and compile to `dist/`. The published package expects `dist/phototext.js` and `.d.ts` files.
 - Keep all image IDs as Imalink-style hashes (do not accept or emit external URLs in `ImageBlock.toJSON` or `toMarkdown`). When adding helper functions, prefer `imageUrlResolver` injection for URL conversion.
+- **Heading level constraints:** Both PhotoDocument and HierarchicalDocument enforce max 6 heading levels (H1-H6). HierarchicalDocument automatically caps depth at 6.
+- **Structural integrity:** HierarchicalDocument enforces that each DocumentPart must have a heading. Content blocks (paragraphs, lists, images) cannot contain nested headings.
 - Editor DOM ↔ model mapping: the editor relies on specific DOM structures and `data-image-id` attributes on <img> elements. Changes to DOM structure must preserve `parseInlineSpans()` and `updateDocument()` behavior.
 
 5) Safe edit checklist for contributors / agents
